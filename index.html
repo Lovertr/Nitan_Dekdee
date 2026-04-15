@@ -266,6 +266,13 @@ function App() {
         ? `The main character's name is "${userName}".`
         : `Invent a cute, culturally appropriate name for the main character yourself${isBoth ? " (use a name that works for both Thai and English audiences, e.g., a short nickname)" : (storyLang==="th" ? " (a Thai nickname)" : " (an English first name)")}.`;
 
+      const needsThaiRhyme = isBoth || storyLang === "th";
+      const lengthSpec = storyLength === "short"
+        ? { pages: "exactly 5 to 6", sentences: "2-4 short sentences" }
+        : storyLength === "long"
+        ? { pages: "exactly 12 to 15", sentences: "4-6 sentences (or 4-8 lines of verse for Thai)" }
+        : { pages: "exactly 8 to 10", sentences: "3-5 sentences (or 3-6 lines of verse for Thai)" };
+
       // Thai text should rhyme (คล้องจอง) — simple children's verse style
       const thaiStyleNote = "Write Thai text as simple children's rhyming verse (กลอนคล้องจองแบบเด็ก). Each page should have 2-4 short lines where line endings rhyme in Thai (คำสุดท้ายของประโยคคล้องจองกัน), in the easy-to-remember style of Thai children's poetry like 'กา ดำ ตัวดี มีหางยาว'. Keep words very simple for a " + age + "-year-old.";
       const textShape = isBoth
@@ -281,13 +288,6 @@ function App() {
       const moralShape = isBoth
         ? `"moral_th": "1-2 sentence takeaway in Thai", "moral_en": "1-2 sentence takeaway in English"`
         : `"moral": "1-2 sentence positive takeaway in ${langLabel}"`;
-
-      const needsThaiRhyme = isBoth || storyLang === "th";
-      const lengthSpec = storyLength === "short"
-        ? { pages: "exactly 5 to 6", sentences: "2-4 short sentences" }
-        : storyLength === "long"
-        ? { pages: "exactly 12 to 15", sentences: "4-6 sentences (or 4-8 lines of verse for Thai)" }
-        : { pages: "exactly 8 to 10", sentences: "3-5 sentences (or 3-6 lines of verse for Thai)" };
 
       const themeInstructions = {
         behavior: `a warm non-shaming story that gently guides this behavior: "${behavior}". Show the positive behavior through a relatable character's journey, never lecture.`,
