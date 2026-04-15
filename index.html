@@ -206,9 +206,13 @@ function App() {
         ? `The main character's name is "${userName}".`
         : `Invent a cute, culturally appropriate name for the main character yourself${isBoth ? " (use a name that works for both Thai and English audiences, e.g., a short nickname)" : (storyLang==="th" ? " (a Thai nickname)" : " (an English first name)")}.`;
 
+      // Thai text should rhyme (คล้องจอง) — simple children's verse style
+      const thaiStyleNote = "Write Thai text as simple children's rhyming verse (กลอนคล้องจองแบบเด็ก). Each page should have 2-4 short lines where line endings rhyme in Thai (คำสุดท้ายของประโยคคล้องจองกัน), in the easy-to-remember style of Thai children's poetry like 'กา ดำ ตัวดี มีหางยาว'. Keep words very simple for a " + age + "-year-old.";
       const textShape = isBoth
-        ? `"text_th": "page text in Thai (2-4 short sentences)", "text_en": "page text in English (2-4 short sentences, same meaning as Thai)"`
-        : `"text": "page text in ${langLabel} (2-4 short sentences, age-appropriate for age ${age})"`;
+        ? `"text_th": "page text in Thai as short rhyming verse (2-4 lines, คล้องจอง)", "text_en": "page text in English (2-4 short sentences, same meaning as Thai, rhyming optional)"`
+        : (storyLang === "th"
+          ? `"text": "page text in Thai as short rhyming verse (2-4 lines, คล้องจอง)"`
+          : `"text": "page text in English (2-4 short sentences, age-appropriate for age ${age})"`);
 
       const titleShape = isBoth
         ? `"title_th": "title in Thai", "title_en": "title in English"`
@@ -218,17 +222,24 @@ function App() {
         ? `"moral_th": "1-2 sentence takeaway in Thai", "moral_en": "1-2 sentence takeaway in English"`
         : `"moral": "1-2 sentence positive takeaway in ${langLabel}"`;
 
+      const needsThaiRhyme = isBoth || storyLang === "th";
+
       const prompt = `You are a gentle children's book author. Write a short warm non-shaming story for a ${age}-year-old child that helps gently guide this behavior: "${behavior}".
 Output language: ${langLabel}.
 ${nameInstruction}
+${needsThaiRhyme ? thaiStyleNote : ""}
 
-IMPORTANT: For illustration consistency, create ONE detailed character description and reuse it in every scene.
+CRITICAL for illustration consistency:
+- Decide the character's gender ONCE (boy or girl) and stick to it for the entire book.
+- Create ONE detailed character description and reuse it in every scene.
+- Every page's main character MUST be the same gender, same age, same hair, same outfit.
 
 Return ONLY valid JSON (no markdown fence) in this shape:
 {
   ${titleShape},
   "character_name": "the main character's name",
-  "character_description": "ONE detailed English visual description of the main character to be copied into every illustration prompt. Include: age (${age}), gender, skin tone, hair (color, length, style), eyes, exact outfit (specific clothing items and colors), any accessory. Be very specific so every illustration shows the SAME child. Example: 'a cheerful 5-year-old Thai girl with round face, fair skin, shoulder-length black hair in twin ponytails with red ribbons, big brown eyes, wearing a yellow t-shirt with a sunflower print, blue denim overalls, white sneakers'",
+  "character_gender": "boy" OR "girl" (pick ONE and be consistent),
+  "character_description": "ONE detailed English visual description of the main character. MUST start with gender + age + ethnicity, then hair (color, length, style), eyes, exact outfit (specific clothing items and colors), any accessory. Be very specific so every illustration shows the SAME child. Example: 'a cheerful 5-year-old Thai GIRL with round face, fair skin, shoulder-length black hair in twin ponytails with red ribbons, big brown eyes, wearing a yellow t-shirt with a sunflower print, blue denim overalls, white sneakers'",
   "pages": [
     { ${textShape},
       "scene": "English description of ONLY the setting, action, mood, and other characters in this scene. Do NOT re-describe the main character. Example: 'sitting at a wooden breakfast table in a sunny kitchen, looking at a plate of vegetables with curiosity, warm morning light'" }
@@ -256,17 +267,20 @@ Exactly 5 to 6 pages. Show the positive behavior naturally without lecturing.${i
       for (let i=0; i<numImages; i++) pickIdx.push(Math.floor(i * pageCount / numImages));
 
       const style = "soft pastel watercolor children's book illustration, warm cheerful, cute chibi style, simple rounded shapes, dreamy soft lighting, no text, no words, no letters";
+      const gender = (data.character_gender || "").toLowerCase().includes("girl") ? "GIRL" : (data.character_gender || "").toLowerCase().includes("boy") ? "BOY" : "CHILD";
       const charDesc = data.character_description || `a ${age}-year-old child`;
+      // Emphasize gender strongly to prevent image model from flipping it
+      const genderLock = `The main character is a ${gender} (${gender.toLowerCase()}). This MUST be a ${gender.toLowerCase()} in every single illustration — NEVER change the gender.`;
 
       setStatus(`${L.generatingImg} (${L.cover})`);
-      const coverImg = await generateImage(`Children's book cover illustration featuring ${charDesc}. The same character will appear consistently throughout the book. Scene: ${charDesc} smiling, standing in a cheerful magical setting related to "${data.title}". ${style}`);
+      const coverImg = await generateImage(`${genderLock} Children's book cover illustration featuring ${charDesc}. Scene: this ${gender.toLowerCase()} smiling, standing in a cheerful magical setting related to the story. ${style}`);
 
       const images = {};
       for (let i=0; i<pickIdx.length; i++) {
         const idx = pickIdx[i];
         setStatus(`${L.generatingImg} ${i+1}/${pickIdx.length}`);
-        // Prepend the same character description to every scene for visual consistency
-        images[idx] = await generateImage(`The main character is ${charDesc}. This is the EXACT SAME character from previous illustrations — keep the appearance, clothing, hair, and all features IDENTICAL. Scene: ${data.pages[idx].scene}. ${style}`);
+        // Prepend gender lock + character description to every scene for visual consistency
+        images[idx] = await generateImage(`${genderLock} Character: ${charDesc}. This is the EXACT SAME ${gender.toLowerCase()} from previous illustrations — keep gender, hair, outfit, face, and all features IDENTICAL. Scene: ${data.pages[idx].scene}. ${style}`);
       }
 
       setStory({ ...data, images, coverImg, childName: name, storyLang });
