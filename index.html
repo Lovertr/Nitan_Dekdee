@@ -33,8 +33,11 @@ import React, { useState } from "https://esm.sh/react@18.2.0";
 import { createRoot } from "https://esm.sh/react-dom@18.2.0/client";
 
 // ============================================================
-// 🔑 ใส่ Gemini API key ของคุณตรงนี้ (ขอฟรีได้ที่ https://aistudio.google.com/apikey)
-const GEMINI_API_KEY = "AIzaSyAprmfJ7tgYtlxtdIzTAB5rnBCr_IWXmng";
+// 🔑 API key จะถูกเก็บใน localStorage ของเบราว์เซอร์แต่ละคน
+// ไม่ต้องใส่ในไฟล์นี้ (ถ้าใส่แล้ว push ขึ้น GitHub public → Google จะ revoke key อัตโนมัติ)
+// ผู้ใช้แต่ละคนกรอก key ครั้งแรกครั้งเดียวต่อเบราว์เซอร์ แล้วใช้ได้ตลอด
+// ขอ key ฟรีที่ https://aistudio.google.com/apikey
+let GEMINI_API_KEY = localStorage.getItem("gemini_api_key") || "";
 // ============================================================
 // Models
 const TEXT_MODEL = "gemini-2.0-flash";
@@ -46,6 +49,10 @@ const t = {
   th: {
     title: "นิทานเด็กดี",
     subtitle: "สร้างนิทานปรับพฤติกรรมเด็ก พร้อมภาพประกอบ (ขับเคลื่อนด้วย Gemini)",
+    apiKeyLabel: "Gemini API Key",
+    apiKeyHelp: "ขอฟรีที่ aistudio.google.com/apikey (เก็บในเบราว์เซอร์คุณเท่านั้น)",
+    saveKey: "บันทึก Key",
+    changeKey: "เปลี่ยน Key",
     childName: "ชื่อเด็ก",
     childNamePh: "เช่น น้องใบบัว",
     age: "อายุ (ปี)",
@@ -69,6 +76,10 @@ const t = {
   en: {
     title: "Good Kid Stories",
     subtitle: "AI-generated children's stories for behavior (powered by Gemini)",
+    apiKeyLabel: "Gemini API Key",
+    apiKeyHelp: "Get a free key at aistudio.google.com/apikey (stored only in your browser)",
+    saveKey: "Save Key",
+    changeKey: "Change Key",
     childName: "Child's name",
     childNamePh: "e.g., Emma",
     age: "Age (years)",
@@ -150,6 +161,8 @@ async function generateImage(prompt) {
 
 function App() {
   const [uiLang, setUiLang] = useState("th");
+  const [apiKey, setApiKey] = useState(GEMINI_API_KEY);
+  const [keyInput, setKeyInput] = useState("");
   const [childName, setChildName] = useState("");
   const [age, setAge] = useState(5);
   const [behavior, setBehavior] = useState("");
@@ -161,9 +174,23 @@ function App() {
   const [error, setError] = useState("");
   const L = t[uiLang];
 
+  function saveKey() {
+    const k = keyInput.trim();
+    if (!k) return;
+    localStorage.setItem("gemini_api_key", k);
+    GEMINI_API_KEY = k;
+    setApiKey(k);
+    setKeyInput("");
+  }
+  function clearKey() {
+    localStorage.removeItem("gemini_api_key");
+    GEMINI_API_KEY = "";
+    setApiKey("");
+  }
+
   async function handleGenerate() {
     setError("");
-    if (!GEMINI_API_KEY || GEMINI_API_KEY.startsWith("PASTE_")) { setError(L.needKey); return; }
+    if (!apiKey) { setError(L.needKey); return; }
     if (!behavior.trim()) { setError(L.needBehavior); return; }
 
     setLoading(true);
@@ -272,7 +299,17 @@ Exactly 5 to 6 pages. The story should show the positive behavior naturally with
       ),
       React.createElement("p", { className:"text-gray-600 mb-8" }, L.subtitle),
 
-      !story && React.createElement("div", { className:"bg-white rounded-2xl p-6 md:p-8 shadow-xl fade-in" },
+      !story && !apiKey && React.createElement("div", { className:"bg-white rounded-2xl p-6 md:p-8 shadow-xl fade-in" },
+        React.createElement("h2", { className:"text-xl font-bold text-orange-600 mb-2" }, "🔑 " + L.apiKeyLabel),
+        React.createElement("p", { className:"text-sm text-gray-600 mb-4" }, L.apiKeyHelp),
+        React.createElement("input", { type:"password", className:"input-field mb-3", value:keyInput, onChange:e=>setKeyInput(e.target.value), placeholder:"AIzaSy...", onKeyDown:e=>{ if(e.key==="Enter") saveKey(); } }),
+        React.createElement("button", { className:"btn-primary w-full", onClick:saveKey, disabled:!keyInput.trim() }, "💾 " + L.saveKey)
+      ),
+
+      !story && apiKey && React.createElement("div", { className:"bg-white rounded-2xl p-6 md:p-8 shadow-xl fade-in" },
+        React.createElement("div", { className:"flex justify-end mb-2" },
+          React.createElement("button", { className:"text-xs text-gray-500 hover:text-orange-600 underline", onClick:clearKey }, "🔑 " + L.changeKey)
+        ),
         React.createElement("div", { className:"space-y-5" },
           React.createElement("div", { className:"grid md:grid-cols-2 gap-4" },
             React.createElement("div", null,
