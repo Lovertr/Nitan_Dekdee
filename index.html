@@ -53,8 +53,8 @@ const t = {
     apiKeyHelp: "ขอฟรีที่ aistudio.google.com/apikey (เก็บในเบราว์เซอร์คุณเท่านั้น)",
     saveKey: "บันทึก Key",
     changeKey: "เปลี่ยน Key",
-    childName: "ชื่อเด็ก",
-    childNamePh: "เช่น น้องใบบัว",
+    childName: "ชื่อเด็ก (ถ้าเว้นว่าง AI จะคิดให้)",
+    childNamePh: "เว้นว่างได้ หรือใส่ เช่น น้องใบบัว",
     age: "อายุ (ปี)",
     behavior: "พฤติกรรมที่อยากแก้ไข",
     behaviorPh: "เช่น ไม่ยอมแปรงฟัน, ชอบโวยวายเมื่อไม่ได้ของเล่น, ไม่ยอมเก็บของ",
@@ -80,7 +80,7 @@ const t = {
     apiKeyHelp: "Get a free key at aistudio.google.com/apikey (stored only in your browser)",
     saveKey: "Save Key",
     changeKey: "Change Key",
-    childName: "Child's name",
+    childName: "Child's name (optional, AI can invent)",
     childNamePh: "e.g., Emma",
     age: "Age (years)",
     behavior: "Behavior to improve",
@@ -196,39 +196,77 @@ function App() {
     setLoading(true);
     try {
       setStatus(L.generating);
-      const langLabel = storyLang === "th" ? "Thai language (ภาษาไทย)" : "English";
-      const name = childName.trim() || (storyLang==="th" ? "น้องหนู" : "the child");
+      const isBoth = storyLang === "both";
+      const langLabel = isBoth
+        ? "BOTH Thai (ภาษาไทย) AND English"
+        : (storyLang === "th" ? "Thai language (ภาษาไทย)" : "English");
+      const userName = childName.trim();
 
-      const prompt = `You are a gentle children's book author. Write a short warm non-shaming story in ${langLabel} for a ${age}-year-old child named "${name}" that helps gently guide this behavior: "${behavior}".
+      const nameInstruction = userName
+        ? `The main character's name is "${userName}".`
+        : `Invent a cute, culturally appropriate name for the main character yourself${isBoth ? " (use a name that works for both Thai and English audiences, e.g., a short nickname)" : (storyLang==="th" ? " (a Thai nickname)" : " (an English first name)")}.`;
+
+      const textShape = isBoth
+        ? `"text_th": "page text in Thai (2-4 short sentences)", "text_en": "page text in English (2-4 short sentences, same meaning as Thai)"`
+        : `"text": "page text in ${langLabel} (2-4 short sentences, age-appropriate for age ${age})"`;
+
+      const titleShape = isBoth
+        ? `"title_th": "title in Thai", "title_en": "title in English"`
+        : `"title": "story title in ${langLabel}"`;
+
+      const moralShape = isBoth
+        ? `"moral_th": "1-2 sentence takeaway in Thai", "moral_en": "1-2 sentence takeaway in English"`
+        : `"moral": "1-2 sentence positive takeaway in ${langLabel}"`;
+
+      const prompt = `You are a gentle children's book author. Write a short warm non-shaming story for a ${age}-year-old child that helps gently guide this behavior: "${behavior}".
+Output language: ${langLabel}.
+${nameInstruction}
+
+IMPORTANT: For illustration consistency, create ONE detailed character description and reuse it in every scene.
 
 Return ONLY valid JSON (no markdown fence) in this shape:
 {
-  "title": "story title in ${langLabel}",
+  ${titleShape},
+  "character_name": "the main character's name",
+  "character_description": "ONE detailed English visual description of the main character to be copied into every illustration prompt. Include: age (${age}), gender, skin tone, hair (color, length, style), eyes, exact outfit (specific clothing items and colors), any accessory. Be very specific so every illustration shows the SAME child. Example: 'a cheerful 5-year-old Thai girl with round face, fair skin, shoulder-length black hair in twin ponytails with red ribbons, big brown eyes, wearing a yellow t-shirt with a sunflower print, blue denim overalls, white sneakers'",
   "pages": [
-    { "text": "page text in ${langLabel} (2-4 short sentences, age-appropriate vocabulary for age ${age})",
-      "scene": "English visual description of this scene for an illustrator: character appearance (age ${age}), setting, mood, colors, action" }
+    { ${textShape},
+      "scene": "English description of ONLY the setting, action, mood, and other characters in this scene. Do NOT re-describe the main character. Example: 'sitting at a wooden breakfast table in a sunny kitchen, looking at a plate of vegetables with curiosity, warm morning light'" }
   ],
-  "moral": "1-2 sentence positive takeaway in ${langLabel}"
+  ${moralShape}
 }
-Exactly 5 to 6 pages. The story should show the positive behavior naturally without lecturing.`;
+Exactly 5 to 6 pages. Show the positive behavior naturally without lecturing.${isBoth ? " The Thai and English versions must convey the same meaning per page." : ""}`;
 
       const raw = await generateText(prompt);
       const data = JSON.parse(raw);
+
+      // Normalize to unified shape regardless of language mode
+      if (isBoth) {
+        data.title = `${data.title_th || ""}\n${data.title_en || ""}`.trim();
+        data.moral = `${data.moral_th || ""}\n\n${data.moral_en || ""}`.trim();
+        data.pages = data.pages.map(p => ({
+          ...p,
+          text: `${p.text_th || ""}\n\n${p.text_en || ""}`.trim()
+        }));
+      }
+      const name = data.character_name || (storyLang==="en" ? "the child" : "น้องหนู");
 
       const pageCount = data.pages.length;
       const pickIdx = [];
       for (let i=0; i<numImages; i++) pickIdx.push(Math.floor(i * pageCount / numImages));
 
       const style = "soft pastel watercolor children's book illustration, warm cheerful, cute chibi style, simple rounded shapes, dreamy soft lighting, no text, no words, no letters";
+      const charDesc = data.character_description || `a ${age}-year-old child`;
 
       setStatus(`${L.generatingImg} (${L.cover})`);
-      const coverImg = await generateImage(`Children's book cover illustration: "${data.title}". Main character: a ${age}-year-old child. ${style}`);
+      const coverImg = await generateImage(`Children's book cover illustration featuring ${charDesc}. The same character will appear consistently throughout the book. Scene: ${charDesc} smiling, standing in a cheerful magical setting related to "${data.title}". ${style}`);
 
       const images = {};
       for (let i=0; i<pickIdx.length; i++) {
         const idx = pickIdx[i];
         setStatus(`${L.generatingImg} ${i+1}/${pickIdx.length}`);
-        images[idx] = await generateImage(`${data.pages[idx].scene}. ${style}`);
+        // Prepend the same character description to every scene for visual consistency
+        images[idx] = await generateImage(`The main character is ${charDesc}. This is the EXACT SAME character from previous illustrations — keep the appearance, clothing, hair, and all features IDENTICAL. Scene: ${data.pages[idx].scene}. ${style}`);
       }
 
       setStory({ ...data, images, coverImg, childName: name, storyLang });
@@ -302,6 +340,34 @@ Exactly 5 to 6 pages. The story should show the positive behavior naturally with
       !story && !apiKey && React.createElement("div", { className:"bg-white rounded-2xl p-6 md:p-8 shadow-xl fade-in" },
         React.createElement("h2", { className:"text-xl font-bold text-orange-600 mb-2" }, "🔑 " + L.apiKeyLabel),
         React.createElement("p", { className:"text-sm text-gray-600 mb-4" }, L.apiKeyHelp),
+
+        // How-to guide
+        React.createElement("div", { className:"bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-4" },
+          React.createElement("p", { className:"font-semibold text-amber-800 mb-2" }, uiLang==="th" ? "📝 วิธีขอ API Key (ฟรี ใช้เวลา 1 นาที):" : "📝 How to get a free API key (1 minute):"),
+          React.createElement("ol", { className:"text-sm text-amber-900 space-y-2 list-decimal list-inside" },
+            React.createElement("li", null, uiLang==="th"
+              ? React.createElement("span", null, "เปิดลิงก์ ", React.createElement("a", { href:"https://aistudio.google.com/apikey", target:"_blank", className:"text-blue-600 underline font-semibold" }, "aistudio.google.com/apikey"), " (ล็อกอินด้วย Gmail)")
+              : React.createElement("span", null, "Open ", React.createElement("a", { href:"https://aistudio.google.com/apikey", target:"_blank", className:"text-blue-600 underline font-semibold" }, "aistudio.google.com/apikey"), " (sign in with Google)")
+            ),
+            React.createElement("li", null, uiLang==="th"
+              ? "กดปุ่มสีน้ำเงิน \"Create API key\" (มุมขวาบน)"
+              : "Click the blue \"Create API key\" button (top right)"
+            ),
+            React.createElement("li", null, uiLang==="th"
+              ? "เลือก \"Create API key in new project\" ถ้ามี popup"
+              : "Choose \"Create API key in new project\" if prompted"
+            ),
+            React.createElement("li", null, uiLang==="th"
+              ? "คัดลอก key ที่ขึ้นต้นด้วย AIzaSy... แล้วกลับมาวางในช่องข้างล่าง"
+              : "Copy the key starting with AIzaSy... and paste it below"
+            )
+          ),
+          React.createElement("p", { className:"text-xs text-amber-700 mt-3 italic" }, uiLang==="th"
+            ? "💡 Free tier ใช้งานได้วันละหลายสิบนิทาน โดยไม่เสียเงิน"
+            : "💡 Free tier allows dozens of stories per day at no cost"
+          )
+        ),
+
         React.createElement("input", { type:"password", className:"input-field mb-3", value:keyInput, onChange:e=>setKeyInput(e.target.value), placeholder:"AIzaSy...", onKeyDown:e=>{ if(e.key==="Enter") saveKey(); } }),
         React.createElement("button", { className:"btn-primary w-full", onClick:saveKey, disabled:!keyInput.trim() }, "💾 " + L.saveKey)
       ),
@@ -330,7 +396,8 @@ Exactly 5 to 6 pages. The story should show the positive behavior naturally with
               React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "🗣️ " + L.language),
               React.createElement("select", { className:"input-field", value:storyLang, onChange:e=>setStoryLang(e.target.value) },
                 React.createElement("option", { value:"th" }, "ไทย"),
-                React.createElement("option", { value:"en" }, "English")
+                React.createElement("option", { value:"en" }, "English"),
+                React.createElement("option", { value:"both" }, "ไทย + English (2 ภาษา)")
               )
             ),
             React.createElement("div", null,
@@ -358,19 +425,19 @@ Exactly 5 to 6 pages. The story should show the positive behavior naturally with
         React.createElement("div", { id:"book", className:"space-y-6" },
           React.createElement("div", { className:"pdf-page story-page cover-gradient", style:{minHeight:"900px", color:"white", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center"} },
             React.createElement("img", { src:story.coverImg, className:"page-img", style:{maxWidth:"70%", boxShadow:"0 20px 60px rgba(0,0,0,.3)"} }),
-            React.createElement("h1", { className:"text-5xl font-bold mb-4 mt-6", style:{textShadow:"2px 2px 8px rgba(0,0,0,.3)"} }, story.title),
+            React.createElement("h1", { className:"text-4xl md:text-5xl font-bold mb-4 mt-6", style:{textShadow:"2px 2px 8px rgba(0,0,0,.3)", whiteSpace:"pre-line", lineHeight:"1.2"} }, story.title),
             React.createElement("p", { className:"text-xl opacity-90" }, storyLang==="th" ? `สำหรับ ${story.childName}` : `For ${story.childName}`)
           ),
           story.pages.map((p, i) => React.createElement("div", { key:i, className:"pdf-page story-page", style:{minHeight:"900px"} },
             story.images[i] && React.createElement("img", { src:story.images[i], className:"page-img" }),
-            React.createElement("p", { className:"text-2xl leading-relaxed text-gray-800", style:{lineHeight:"2"} }, p.text),
+            React.createElement("p", { className:"text-2xl leading-relaxed text-gray-800", style:{lineHeight:"1.8", whiteSpace:"pre-line"} }, p.text),
             React.createElement("div", { className:"text-right text-gray-400 mt-8" }, `${L.page} ${i+1}`)
           )),
           React.createElement("div", { className:"pdf-page story-page", style:{minHeight:"900px", background:"linear-gradient(135deg,#fef3c7,#fce7f3)"} },
             React.createElement("div", { className:"flex flex-col items-center justify-center text-center", style:{minHeight:"800px"} },
               React.createElement("div", { className:"text-7xl mb-6" }, "💝"),
               React.createElement("h2", { className:"text-3xl font-bold text-orange-600 mb-6" }, L.moral),
-              React.createElement("p", { className:"text-2xl text-gray-800 max-w-2xl leading-relaxed" }, story.moral)
+              React.createElement("p", { className:"text-2xl text-gray-800 max-w-2xl leading-relaxed", style:{whiteSpace:"pre-line"} }, story.moral)
             )
           )
         )
