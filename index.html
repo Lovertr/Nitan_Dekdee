@@ -56,10 +56,39 @@ const t = {
     childName: "ชื่อเด็ก (ถ้าเว้นว่าง AI จะคิดให้)",
     childNamePh: "เว้นว่างได้ หรือใส่ เช่น น้องใบบัว",
     age: "อายุ (ปี)",
-    behavior: "พฤติกรรมที่อยากแก้ไข",
-    behaviorPh: "เช่น ไม่ยอมแปรงฟัน, ชอบโวยวายเมื่อไม่ได้ของเล่น, ไม่ยอมเก็บของ",
+    behavior: "รายละเอียดที่อยากให้นิทานพูดถึง",
+    behaviorPh: "เช่น ไม่ยอมแปรงฟัน / อยากเป็นหมอ / กลัวความมืด",
+    theme: "หมวดหมู่นิทาน",
+    themes: {
+      behavior: "🎯 แก้พฤติกรรม",
+      inspire: "✨ สร้างแรงบันดาลใจ",
+      moral: "💝 คุณธรรม (แบ่งปัน/ซื่อสัตย์)",
+      courage: "🦁 ความกล้าหาญ เอาชนะความกลัว",
+      friendship: "🤝 มิตรภาพ ทักษะสังคม",
+      emotion: "🌈 เข้าใจอารมณ์ความรู้สึก",
+      curiosity: "🔬 รักการเรียนรู้ ช่างสงสัย",
+      family: "👨‍👩‍👧 ความรักในครอบครัว",
+      selfcare: "🛁 ดูแลตัวเอง สุขอนามัย",
+      adventure: "🌟 ผจญภัย จินตนาการ"
+    },
+    themeHints: {
+      behavior: "เช่น ไม่ยอมแปรงฟัน, ชอบโวยวาย, ไม่ยอมเก็บของ",
+      inspire: "เช่น อยากเป็นนักบินอวกาศ, อยากวาดรูปเก่ง, ฝันอยากช่วยโลก",
+      moral: "เช่น เรียนรู้การแบ่งของเล่น, ไม่โกหก, ขอบคุณ-ขอโทษ",
+      courage: "เช่น กลัวความมืด, กลัวหมอฟัน, ไม่กล้าคุยกับเพื่อนใหม่",
+      friendship: "เช่น หาเพื่อนใหม่, การคืนดี, เล่นด้วยกันอย่างไร",
+      emotion: "เช่น จัดการความโกรธ, เมื่อรู้สึกเศร้า, เมื่ออิจฉาน้อง",
+      curiosity: "เช่น ทำไมฝนตก, ดาวเป็นยังไง, แมลงทำอะไรบ้าง",
+      family: "เช่น รักพ่อแม่, มีน้องใหม่, ช่วยงานบ้าน",
+      selfcare: "เช่น ล้างมือ, กินผัก, นอนให้พอ, ออกกำลังกาย",
+      adventure: "เช่น ผจญภัยในป่าเวทมนตร์, เดินทางใต้ทะเล, บินสู่ดวงดาว"
+    },
     language: "ภาษานิทาน",
     numImages: "จำนวนภาพประกอบ",
+    length: "ความยาวเรื่อง",
+    lengthShort: "สั้น (5-6 หน้า)",
+    lengthMed: "กลาง (8-10 หน้า)",
+    lengthLong: "ยาว (12-15 หน้า)",
     generate: "สร้างนิทาน ✨",
     generating: "กำลังสร้างนิทาน...",
     generatingImg: "กำลังวาดภาพ",
@@ -83,10 +112,39 @@ const t = {
     childName: "Child's name (optional, AI can invent)",
     childNamePh: "e.g., Emma",
     age: "Age (years)",
-    behavior: "Behavior to improve",
-    behaviorPh: "e.g., doesn't want to brush teeth, tantrums, won't clean up toys",
+    behavior: "Details for the story",
+    behaviorPh: "e.g., won't brush teeth / wants to be a doctor / afraid of dark",
+    theme: "Story theme",
+    themes: {
+      behavior: "🎯 Behavior guidance",
+      inspire: "✨ Inspiration & dreams",
+      moral: "💝 Morals (sharing/honesty)",
+      courage: "🦁 Courage, overcoming fears",
+      friendship: "🤝 Friendship & social skills",
+      emotion: "🌈 Emotional intelligence",
+      curiosity: "🔬 Love of learning",
+      family: "👨‍👩‍👧 Family love",
+      selfcare: "🛁 Self-care & hygiene",
+      adventure: "🌟 Adventure & imagination"
+    },
+    themeHints: {
+      behavior: "e.g., won't brush teeth, tantrums, won't tidy up",
+      inspire: "e.g., wants to be an astronaut, wants to draw well, dreams of helping the world",
+      moral: "e.g., learning to share, honesty, saying thank you/sorry",
+      courage: "e.g., afraid of dark, fear of dentist, shy with new friends",
+      friendship: "e.g., making new friends, reconciling, playing together",
+      emotion: "e.g., managing anger, feeling sad, jealous of sibling",
+      curiosity: "e.g., why does it rain, what are stars, what do bugs do",
+      family: "e.g., loving parents, new sibling, helping at home",
+      selfcare: "e.g., washing hands, eating veggies, getting enough sleep",
+      adventure: "e.g., magical forest adventure, undersea journey, flying to stars"
+    },
     language: "Story language",
     numImages: "Number of illustrations",
+    length: "Story length",
+    lengthShort: "Short (5-6 pages)",
+    lengthMed: "Medium (8-10 pages)",
+    lengthLong: "Long (12-15 pages)",
     generate: "Generate Story ✨",
     generating: "Generating story...",
     generatingImg: "Drawing image",
@@ -168,6 +226,8 @@ function App() {
   const [behavior, setBehavior] = useState("");
   const [storyLang, setStoryLang] = useState("th");
   const [numImages, setNumImages] = useState(3);
+  const [storyLength, setStoryLength] = useState("medium");
+  const [theme, setTheme] = useState("behavior");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [story, setStory] = useState(null);
@@ -209,10 +269,10 @@ function App() {
       // Thai text should rhyme (คล้องจอง) — simple children's verse style
       const thaiStyleNote = "Write Thai text as simple children's rhyming verse (กลอนคล้องจองแบบเด็ก). Each page should have 2-4 short lines where line endings rhyme in Thai (คำสุดท้ายของประโยคคล้องจองกัน), in the easy-to-remember style of Thai children's poetry like 'กา ดำ ตัวดี มีหางยาว'. Keep words very simple for a " + age + "-year-old.";
       const textShape = isBoth
-        ? `"text_th": "page text in Thai as short rhyming verse (2-4 lines, คล้องจอง)", "text_en": "page text in English (2-4 short sentences, same meaning as Thai, rhyming optional)"`
+        ? `"text_th": "page text in Thai as rhyming verse (${lengthSpec.sentences}, คล้องจอง)", "text_en": "page text in English (${lengthSpec.sentences}, same meaning as Thai)"`
         : (storyLang === "th"
-          ? `"text": "page text in Thai as short rhyming verse (2-4 lines, คล้องจอง)"`
-          : `"text": "page text in English (2-4 short sentences, age-appropriate for age ${age})"`);
+          ? `"text": "page text in Thai as rhyming verse (${lengthSpec.sentences}, คล้องจอง)"`
+          : `"text": "page text in English (${lengthSpec.sentences}, age-appropriate for age ${age})"`);
 
       const titleShape = isBoth
         ? `"title_th": "title in Thai", "title_en": "title in English"`
@@ -223,8 +283,27 @@ function App() {
         : `"moral": "1-2 sentence positive takeaway in ${langLabel}"`;
 
       const needsThaiRhyme = isBoth || storyLang === "th";
+      const lengthSpec = storyLength === "short"
+        ? { pages: "exactly 5 to 6", sentences: "2-4 short sentences" }
+        : storyLength === "long"
+        ? { pages: "exactly 12 to 15", sentences: "4-6 sentences (or 4-8 lines of verse for Thai)" }
+        : { pages: "exactly 8 to 10", sentences: "3-5 sentences (or 3-6 lines of verse for Thai)" };
 
-      const prompt = `You are a gentle children's book author. Write a short warm non-shaming story for a ${age}-year-old child that helps gently guide this behavior: "${behavior}".
+      const themeInstructions = {
+        behavior: `a warm non-shaming story that gently guides this behavior: "${behavior}". Show the positive behavior through a relatable character's journey, never lecture.`,
+        inspire: `an inspirational dream-big story about this aspiration: "${behavior}". Show the character imagining, trying, facing tiny setbacks, and discovering that small daily efforts lead to big dreams. End on a hopeful note that inspires action.`,
+        moral: `a moral-values story teaching this virtue: "${behavior}". The character learns the value naturally through a small meaningful event, experiences the reward of acting well, and feels proud.`,
+        courage: `a brave-hearted story about overcoming this fear or challenge: "${behavior}". The character feels afraid (that's okay), takes one small brave step, discovers courage grows with practice, and feels proud at the end.`,
+        friendship: `a heartwarming friendship story about: "${behavior}". Show empathy, kind words, small acts of friendship, and the joy of connection.`,
+        emotion: `a gentle emotional-literacy story about this feeling: "${behavior}". Name the feeling clearly, show it's okay to feel it, offer a healthy way to cope, and end with the character feeling better and understood.`,
+        curiosity: `a curious explorer story about this wonder: "${behavior}". The character asks questions, discovers fun kid-friendly facts, and celebrates learning. Include 2-3 simple true facts woven into the story.`,
+        family: `a tender family-love story about: "${behavior}". Show warmth, simple everyday moments, and gentle emotional connection between family members.`,
+        selfcare: `a cheerful self-care story about this healthy habit: "${behavior}". Make the habit feel fun and empowering, not like a chore.`,
+        adventure: `an imaginative adventure story inspired by: "${behavior}". Include a magical twist, a small challenge the character solves with kindness or cleverness, and a safe happy return.`
+      };
+      const themeInstruction = themeInstructions[theme] || themeInstructions.behavior;
+
+      const prompt = `You are a gentle children's book author. Write a short heartwarming story for a ${age}-year-old child: ${themeInstruction}
 Output language: ${langLabel}.
 ${nameInstruction}
 ${needsThaiRhyme ? thaiStyleNote : ""}
@@ -246,7 +325,7 @@ Return ONLY valid JSON (no markdown fence) in this shape:
   ],
   ${moralShape}
 }
-Exactly 5 to 6 pages. Show the positive behavior naturally without lecturing.${isBoth ? " The Thai and English versions must convey the same meaning per page." : ""}`;
+Total pages: ${lengthSpec.pages}. Develop with clear beginning (introduce character + context), middle (journey and small meaningful events), and end (positive uplifting resolution).${isBoth ? " The Thai and English versions must convey the same meaning per page." : ""}`;
 
       const raw = await generateText(prompt);
       const data = JSON.parse(raw);
@@ -402,8 +481,16 @@ Exactly 5 to 6 pages. Show the positive behavior naturally without lecturing.${i
             )
           ),
           React.createElement("div", null,
-            React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "🎯 " + L.behavior),
-            React.createElement("textarea", { className:"input-field", rows:3, value:behavior, onChange:e=>setBehavior(e.target.value), placeholder:L.behaviorPh })
+            React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "📖 " + L.theme),
+            React.createElement("select", { className:"input-field", value:theme, onChange:e=>setTheme(e.target.value) },
+              Object.entries(L.themes).map(([k, label]) =>
+                React.createElement("option", { key:k, value:k }, label)
+              )
+            )
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "✏️ " + L.behavior),
+            React.createElement("textarea", { className:"input-field", rows:3, value:behavior, onChange:e=>setBehavior(e.target.value), placeholder:L.themeHints[theme] || L.behaviorPh })
           ),
           React.createElement("div", { className:"grid md:grid-cols-2 gap-4" },
             React.createElement("div", null,
@@ -419,8 +506,18 @@ Exactly 5 to 6 pages. Show the positive behavior naturally without lecturing.${i
               React.createElement("select", { className:"input-field", value:numImages, onChange:e=>setNumImages(+e.target.value) },
                 React.createElement("option", { value:2 }, "2"),
                 React.createElement("option", { value:3 }, "3"),
-                React.createElement("option", { value:4 }, "4")
+                React.createElement("option", { value:4 }, "4"),
+                React.createElement("option", { value:5 }, "5"),
+                React.createElement("option", { value:6 }, "6")
               )
+            )
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "📚 " + L.length),
+            React.createElement("select", { className:"input-field", value:storyLength, onChange:e=>setStoryLength(e.target.value) },
+              React.createElement("option", { value:"short" }, L.lengthShort),
+              React.createElement("option", { value:"medium" }, L.lengthMed),
+              React.createElement("option", { value:"long" }, L.lengthLong)
             )
           ),
           error && React.createElement("div", { className:"bg-red-50 text-red-700 p-3 rounded-lg text-sm" }, error),
