@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>นิทานเด็กดี - Good Kid Stories</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  body { font-family: 'Kanit', 'Nunito', sans-serif; background: linear-gradient(135deg,#fef3c7 0%,#fce7f3 50%,#dbeafe 100%); min-height:100vh; }
+  .story-page { background: #fffdf7; border-radius: 20px; padding: 32px; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+  .btn-primary { background: linear-gradient(135deg,#f97316,#ec4899); color:white; font-weight:600; padding:12px 28px; border-radius:14px; transition:transform .15s; }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+  .input-field { background:white; border:2px solid #fde68a; border-radius:12px; padding:12px 16px; width:100%; transition: border-color .2s; }
+  .input-field:focus { outline:none; border-color:#f97316; }
+  .spin { animation: spin 1s linear infinite; display:inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fade-in { animation: fadeIn .5s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+  .page-img { width:100%; max-height:380px; object-fit:cover; border-radius:14px; margin-bottom:16px; background:#fef3c7; }
+  .cover-gradient { background: linear-gradient(135deg,#fbbf24,#f472b6,#60a5fa); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="module">
+import React, { useState } from "https://esm.sh/react@18.2.0";
+import { createRoot } from "https://esm.sh/react-dom@18.2.0/client";
+
+// ============================================================
+// 🔑 ใส่ Gemini API key ของคุณตรงนี้ (ขอฟรีได้ที่ https://aistudio.google.com/apikey)
+const GEMINI_API_KEY = "AIzaSyAprmfJ7tgYtlxtdIzTAB5rnBCr_IWXmng";
+// ============================================================
+// Models
+const TEXT_MODEL = "gemini-2.0-flash";
+const IMAGE_MODEL = "imagen-3.0-generate-002"; // ต้องเปิด billing บน Google Cloud / AI Studio paid tier
+// ถ้าใช้ไม่ได้จะ fallback เป็น gemini-2.0-flash-exp image generation อัตโนมัติ
+// ============================================================
+
+const t = {
+  th: {
+    title: "นิทานเด็กดี",
+    subtitle: "สร้างนิทานปรับพฤติกรรมเด็ก พร้อมภาพประกอบ (ขับเคลื่อนด้วย Gemini)",
+    childName: "ชื่อเด็ก",
+    childNamePh: "เช่น น้องใบบัว",
+    age: "อายุ (ปี)",
+    behavior: "พฤติกรรมที่อยากแก้ไข",
+    behaviorPh: "เช่น ไม่ยอมแปรงฟัน, ชอบโวยวายเมื่อไม่ได้ของเล่น, ไม่ยอมเก็บของ",
+    language: "ภาษานิทาน",
+    numImages: "จำนวนภาพประกอบ",
+    generate: "สร้างนิทาน ✨",
+    generating: "กำลังสร้างนิทาน...",
+    generatingImg: "กำลังวาดภาพ",
+    downloadPdf: "ดาวน์โหลด PDF",
+    downloadPptx: "ดาวน์โหลด PowerPoint",
+    reset: "สร้างใหม่",
+    page: "หน้า",
+    moral: "ข้อคิดจากนิทาน",
+    cover: "หน้าปก",
+    err: "เกิดข้อผิดพลาด: ",
+    needKey: "ยังไม่ได้ตั้งค่า API key ในไฟล์ index.html (ตัวแปร GEMINI_API_KEY)",
+    needBehavior: "กรุณาระบุพฤติกรรมที่อยากแก้ไข"
+  },
+  en: {
+    title: "Good Kid Stories",
+    subtitle: "AI-generated children's stories for behavior (powered by Gemini)",
+    childName: "Child's name",
+    childNamePh: "e.g., Emma",
+    age: "Age (years)",
+    behavior: "Behavior to improve",
+    behaviorPh: "e.g., doesn't want to brush teeth, tantrums, won't clean up toys",
+    language: "Story language",
+    numImages: "Number of illustrations",
+    generate: "Generate Story ✨",
+    generating: "Generating story...",
+    generatingImg: "Drawing image",
+    downloadPdf: "Download PDF",
+    downloadPptx: "Download PowerPoint",
+    reset: "New Story",
+    page: "Page",
+    moral: "Moral of the Story",
+    cover: "Cover",
+    err: "Error: ",
+    needKey: "API key not set in index.html (GEMINI_API_KEY variable)",
+    needBehavior: "Please describe the behavior"
+  }
+};
+
+async function generateText(prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role:"user", parts:[{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8,
+        responseMimeType: "application/json"
+      }
+    })
+  });
+  if (!res.ok) throw new Error((await res.json()).error?.message || res.statusText);
+  const data = await res.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function generateImage(prompt) {
+  const candidates = [
+    "gemini-2.5-flash-image-preview",
+    "gemini-2.5-flash-image",
+    "gemini-2.0-flash-preview-image-generation",
+    "gemini-2.0-flash-exp-image-generation"
+  ];
+  const errors = [];
+  for (const model of candidates) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role:"user", parts:[{ text: prompt }] }],
+          generationConfig: { responseModalities: ["TEXT","IMAGE"] }
+        })
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`${model} failed:`, errText);
+        errors.push(`${model}: ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      for (const p of parts) {
+        if (p.inlineData) return "data:" + p.inlineData.mimeType + ";base64," + p.inlineData.data;
+      }
+      errors.push(`${model}: no image in response`);
+    } catch (e) {
+      console.warn(model, e);
+      errors.push(`${model}: ${e.message}`);
+    }
+  }
+  throw new Error("All image models failed. " + errors.join(" | "));
+}
+
+function App() {
+  const [uiLang, setUiLang] = useState("th");
+  const [childName, setChildName] = useState("");
+  const [age, setAge] = useState(5);
+  const [behavior, setBehavior] = useState("");
+  const [storyLang, setStoryLang] = useState("th");
+  const [numImages, setNumImages] = useState(3);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("");
+  const [story, setStory] = useState(null);
+  const [error, setError] = useState("");
+  const L = t[uiLang];
+
+  async function handleGenerate() {
+    setError("");
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.startsWith("PASTE_")) { setError(L.needKey); return; }
+    if (!behavior.trim()) { setError(L.needBehavior); return; }
+
+    setLoading(true);
+    try {
+      setStatus(L.generating);
+      const langLabel = storyLang === "th" ? "Thai language (ภาษาไทย)" : "English";
+      const name = childName.trim() || (storyLang==="th" ? "น้องหนู" : "the child");
+
+      const prompt = `You are a gentle children's book author. Write a short warm non-shaming story in ${langLabel} for a ${age}-year-old child named "${name}" that helps gently guide this behavior: "${behavior}".
+
+Return ONLY valid JSON (no markdown fence) in this shape:
+{
+  "title": "story title in ${langLabel}",
+  "pages": [
+    { "text": "page text in ${langLabel} (2-4 short sentences, age-appropriate vocabulary for age ${age})",
+      "scene": "English visual description of this scene for an illustrator: character appearance (age ${age}), setting, mood, colors, action" }
+  ],
+  "moral": "1-2 sentence positive takeaway in ${langLabel}"
+}
+Exactly 5 to 6 pages. The story should show the positive behavior naturally without lecturing.`;
+
+      const raw = await generateText(prompt);
+      const data = JSON.parse(raw);
+
+      const pageCount = data.pages.length;
+      const pickIdx = [];
+      for (let i=0; i<numImages; i++) pickIdx.push(Math.floor(i * pageCount / numImages));
+
+      const style = "soft pastel watercolor children's book illustration, warm cheerful, cute chibi style, simple rounded shapes, dreamy soft lighting, no text, no words, no letters";
+
+      setStatus(`${L.generatingImg} (${L.cover})`);
+      const coverImg = await generateImage(`Children's book cover illustration: "${data.title}". Main character: a ${age}-year-old child. ${style}`);
+
+      const images = {};
+      for (let i=0; i<pickIdx.length; i++) {
+        const idx = pickIdx[i];
+        setStatus(`${L.generatingImg} ${i+1}/${pickIdx.length}`);
+        images[idx] = await generateImage(`${data.pages[idx].scene}. ${style}`);
+      }
+
+      setStory({ ...data, images, coverImg, childName: name, storyLang });
+    } catch (e) {
+      setError(L.err + e.message);
+    } finally {
+      setLoading(false);
+      setStatus("");
+    }
+  }
+
+  async function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pages = document.querySelectorAll(".pdf-page");
+    for (let i=0; i<pages.length; i++) {
+      const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#fffdf7", useCORS: true });
+      const img = canvas.toDataURL("image/jpeg", 0.9);
+      if (i>0) pdf.addPage();
+      pdf.addImage(img, "JPEG", 0, 0, 210, 297);
+    }
+    pdf.save(`${story.title.replace(/[^\w\u0E00-\u0E7F]+/g,'_')}.pdf`);
+  }
+
+  async function downloadPPTX() {
+    const pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5 inches
+    const W = 13.33, H = 7.5;
+
+    // Cover slide
+    const s0 = pptx.addSlide();
+    s0.background = { color: "FBBF24" };
+    s0.addImage({ data: story.coverImg, x: W/2 - 2.5, y: 0.5, w: 5, h: 5 });
+    s0.addText(story.title, { x: 0.5, y: 5.7, w: W-1, h: 1, fontSize: 40, bold: true, color: "FFFFFF", align: "center", fontFace: "Kanit" });
+    s0.addText(storyLang==="th" ? `สำหรับ ${story.childName}` : `For ${story.childName}`, { x: 0.5, y: 6.7, w: W-1, h: 0.5, fontSize: 18, color: "FFFFFF", align: "center", fontFace: "Kanit" });
+
+    // Story pages
+    story.pages.forEach((p, i) => {
+      const s = pptx.addSlide();
+      s.background = { color: "FFFDF7" };
+      if (story.images[i]) {
+        s.addImage({ data: story.images[i], x: 0.8, y: 0.5, w: 5.5, h: 5.5 });
+        s.addText(p.text, { x: 6.8, y: 1, w: 5.8, h: 5, fontSize: 20, color: "1F2937", fontFace: "Kanit", valign: "middle" });
+      } else {
+        s.addText(p.text, { x: 1, y: 1.5, w: W-2, h: 4.5, fontSize: 28, color: "1F2937", fontFace: "Kanit", align: "center", valign: "middle" });
+      }
+      s.addText(`${L.page} ${i+1}`, { x: W-2, y: H-0.5, w: 1.5, h: 0.4, fontSize: 12, color: "9CA3AF", align: "right" });
+    });
+
+    // Moral slide
+    const sm = pptx.addSlide();
+    sm.background = { color: "FEF3C7" };
+    sm.addText("💝", { x: 0.5, y: 1, w: W-1, h: 1.5, fontSize: 80, align: "center" });
+    sm.addText(L.moral, { x: 0.5, y: 2.8, w: W-1, h: 0.8, fontSize: 28, bold: true, color: "EA580C", align: "center", fontFace: "Kanit" });
+    sm.addText(story.moral, { x: 1, y: 3.8, w: W-2, h: 2.5, fontSize: 22, color: "1F2937", align: "center", fontFace: "Kanit", valign: "top" });
+
+    pptx.writeFile({ fileName: `${story.title.replace(/[^\w\u0E00-\u0E7F]+/g,'_')}.pptx` });
+  }
+
+  return React.createElement("div", { className:"min-h-screen p-4 md:p-8" },
+    React.createElement("div", { className:"max-w-5xl mx-auto" },
+      React.createElement("div", { className:"flex justify-between items-center mb-6" },
+        React.createElement("h1", { className:"text-3xl md:text-4xl font-bold text-orange-600" }, "🌟 " + L.title),
+        React.createElement("div", { className:"flex gap-2" },
+          React.createElement("button", { onClick:()=>setUiLang("th"), className:`px-3 py-1 rounded-lg text-sm font-semibold ${uiLang==='th'?'bg-orange-500 text-white':'bg-white text-orange-600'}` }, "TH"),
+          React.createElement("button", { onClick:()=>setUiLang("en"), className:`px-3 py-1 rounded-lg text-sm font-semibold ${uiLang==='en'?'bg-orange-500 text-white':'bg-white text-orange-600'}` }, "EN")
+        )
+      ),
+      React.createElement("p", { className:"text-gray-600 mb-8" }, L.subtitle),
+
+      !story && React.createElement("div", { className:"bg-white rounded-2xl p-6 md:p-8 shadow-xl fade-in" },
+        React.createElement("div", { className:"space-y-5" },
+          React.createElement("div", { className:"grid md:grid-cols-2 gap-4" },
+            React.createElement("div", null,
+              React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "👶 " + L.childName),
+              React.createElement("input", { className:"input-field", value:childName, onChange:e=>setChildName(e.target.value), placeholder:L.childNamePh })
+            ),
+            React.createElement("div", null,
+              React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "🎂 " + L.age),
+              React.createElement("input", { type:"number", min:2, max:12, className:"input-field", value:age, onChange:e=>setAge(+e.target.value) })
+            )
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "🎯 " + L.behavior),
+            React.createElement("textarea", { className:"input-field", rows:3, value:behavior, onChange:e=>setBehavior(e.target.value), placeholder:L.behaviorPh })
+          ),
+          React.createElement("div", { className:"grid md:grid-cols-2 gap-4" },
+            React.createElement("div", null,
+              React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "🗣️ " + L.language),
+              React.createElement("select", { className:"input-field", value:storyLang, onChange:e=>setStoryLang(e.target.value) },
+                React.createElement("option", { value:"th" }, "ไทย"),
+                React.createElement("option", { value:"en" }, "English")
+              )
+            ),
+            React.createElement("div", null,
+              React.createElement("label", { className:"block font-semibold mb-1 text-gray-700" }, "🎨 " + L.numImages),
+              React.createElement("select", { className:"input-field", value:numImages, onChange:e=>setNumImages(+e.target.value) },
+                React.createElement("option", { value:2 }, "2"),
+                React.createElement("option", { value:3 }, "3"),
+                React.createElement("option", { value:4 }, "4")
+              )
+            )
+          ),
+          error && React.createElement("div", { className:"bg-red-50 text-red-700 p-3 rounded-lg text-sm" }, error),
+          React.createElement("button", { className:"btn-primary w-full text-lg", disabled:loading, onClick:handleGenerate },
+            loading ? React.createElement("span", null, React.createElement("span", { className:"spin mr-2" }, "⏳"), status) : L.generate
+          )
+        )
+      ),
+
+      story && React.createElement("div", { className:"fade-in" },
+        React.createElement("div", { className:"flex flex-wrap gap-3 mb-6" },
+          React.createElement("button", { className:"btn-primary", onClick:downloadPDF }, "📥 " + L.downloadPdf),
+          React.createElement("button", { className:"btn-primary", style:{background:"linear-gradient(135deg,#dc2626,#f59e0b)"}, onClick:downloadPPTX }, "📊 " + L.downloadPptx),
+          React.createElement("button", { className:"px-6 py-3 bg-white text-orange-600 font-semibold rounded-xl shadow", onClick:()=>setStory(null) }, "🔄 " + L.reset)
+        ),
+        React.createElement("div", { id:"book", className:"space-y-6" },
+          React.createElement("div", { className:"pdf-page story-page cover-gradient", style:{minHeight:"900px", color:"white", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", textAlign:"center"} },
+            React.createElement("img", { src:story.coverImg, className:"page-img", style:{maxWidth:"70%", boxShadow:"0 20px 60px rgba(0,0,0,.3)"} }),
+            React.createElement("h1", { className:"text-5xl font-bold mb-4 mt-6", style:{textShadow:"2px 2px 8px rgba(0,0,0,.3)"} }, story.title),
+            React.createElement("p", { className:"text-xl opacity-90" }, storyLang==="th" ? `สำหรับ ${story.childName}` : `For ${story.childName}`)
+          ),
+          story.pages.map((p, i) => React.createElement("div", { key:i, className:"pdf-page story-page", style:{minHeight:"900px"} },
+            story.images[i] && React.createElement("img", { src:story.images[i], className:"page-img" }),
+            React.createElement("p", { className:"text-2xl leading-relaxed text-gray-800", style:{lineHeight:"2"} }, p.text),
+            React.createElement("div", { className:"text-right text-gray-400 mt-8" }, `${L.page} ${i+1}`)
+          )),
+          React.createElement("div", { className:"pdf-page story-page", style:{minHeight:"900px", background:"linear-gradient(135deg,#fef3c7,#fce7f3)"} },
+            React.createElement("div", { className:"flex flex-col items-center justify-center text-center", style:{minHeight:"800px"} },
+              React.createElement("div", { className:"text-7xl mb-6" }, "💝"),
+              React.createElement("h2", { className:"text-3xl font-bold text-orange-600 mb-6" }, L.moral),
+              React.createElement("p", { className:"text-2xl text-gray-800 max-w-2xl leading-relaxed" }, story.moral)
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
