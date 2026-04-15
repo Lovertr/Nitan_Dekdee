@@ -266,19 +266,19 @@ function App() {
         ? `The main character's name is "${userName}".`
         : `Invent a cute, culturally appropriate name for the main character yourself${isBoth ? " (use a name that works for both Thai and English audiences, e.g., a short nickname)" : (storyLang==="th" ? " (a Thai nickname)" : " (an English first name)")}.`;
 
-      const needsThaiRhyme = isBoth || storyLang === "th";
+      const hasThai = isBoth || storyLang === "th";
       const lengthSpec = storyLength === "short"
         ? { pages: "exactly 5 to 6", sentences: "2-4 short sentences" }
         : storyLength === "long"
-        ? { pages: "exactly 12 to 15", sentences: "4-6 sentences (or 4-8 lines of verse for Thai)" }
-        : { pages: "exactly 8 to 10", sentences: "3-5 sentences (or 3-6 lines of verse for Thai)" };
+        ? { pages: "exactly 12 to 15", sentences: "4-6 sentences" }
+        : { pages: "exactly 8 to 10", sentences: "3-5 sentences" };
 
-      // Thai text should rhyme (คล้องจอง) — simple children's verse style
-      const thaiStyleNote = "Write Thai text as simple children's rhyming verse (กลอนคล้องจองแบบเด็ก). Each page should have 2-4 short lines where line endings rhyme in Thai (คำสุดท้ายของประโยคคล้องจองกัน), in the easy-to-remember style of Thai children's poetry like 'กา ดำ ตัวดี มีหางยาว'. Keep words very simple for a " + age + "-year-old.";
+      // Thai text: natural, easy to understand, engaging storytelling (NOT forced rhyme)
+      const thaiStyleNote = "เขียนภาษาไทยให้เป็นธรรมชาติ อ่านเข้าใจง่าย ใช้คำง่ายๆ เหมาะกับเด็กอายุ " + age + " ปี เล่าเรื่องให้น่าสนใจชวนติดตามจนจบ มีจังหวะการเล่าที่ลื่นไหล ใช้บทสนทนาสั้นๆ ได้เพื่อเพิ่มความมีชีวิตชีวา หลีกเลี่ยงการบังคับให้คล้องจองจนประโยคแข็งหรือแปลก เน้นความเข้าใจและอารมณ์ของเรื่องเป็นหลัก";
       const textShape = isBoth
-        ? `"text_th": "page text in Thai as rhyming verse (${lengthSpec.sentences}, คล้องจอง)", "text_en": "page text in English (${lengthSpec.sentences}, same meaning as Thai)"`
+        ? `"text_th": "page text in natural easy-to-read Thai (${lengthSpec.sentences}, engaging storytelling, NOT rhyming verse)", "text_en": "page text in English (${lengthSpec.sentences}, same meaning as Thai)"`
         : (storyLang === "th"
-          ? `"text": "page text in Thai as rhyming verse (${lengthSpec.sentences}, คล้องจอง)"`
+          ? `"text": "page text in natural easy-to-read Thai (${lengthSpec.sentences}, engaging storytelling, NOT rhyming verse)"`
           : `"text": "page text in English (${lengthSpec.sentences}, age-appropriate for age ${age})"`);
 
       const titleShape = isBoth
@@ -306,7 +306,7 @@ function App() {
       const prompt = `You are a gentle children's book author. Write a short heartwarming story for a ${age}-year-old child: ${themeInstruction}
 Output language: ${langLabel}.
 ${nameInstruction}
-${needsThaiRhyme ? thaiStyleNote : ""}
+${hasThai ? thaiStyleNote : ""}
 
 CRITICAL for illustration consistency:
 - Decide the character's gender ONCE (boy or girl) and stick to it for the entire book.
